@@ -1,0 +1,37 @@
+# venv
+venv/
+.env
+.env.*
+*.env
+
+# Python cache
+__pycache__/
+*.pyc
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+*.log
+docker-data/
+db-data/
+
+# Byte-compiled
+*.pyo
+*.pyd
+
+# Build
+dist/
+build/
+
+
+# MyPy
+.mypy_cache/
+
+# Ruff / Black
+.ruff_cache/
