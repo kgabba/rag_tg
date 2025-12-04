@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 import uvicorn
-from auth.routers import router_auth, router_bd
+#from auth.routers import router_auth, router_bd
 import psycopg2
 from db.utils import DB_URL
 from llm.routers import router_llm
@@ -26,8 +26,8 @@ async def lifespan(api: FastAPI):
 
 api = FastAPI(lifespan=lifespan)
 
-api.include_router(router_auth)
-api.include_router(router_bd)
+# api.include_router(router_auth)
+#api.include_router(router_bd)
 api.include_router(router_llm)
 
 if __name__ == '__main__':

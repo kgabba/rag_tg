@@ -24,26 +24,8 @@ def check_valid_user_from_db_and_get_user(
         roles=db_roles, 
         session_token=db_session)
 
-def base_auth(
-        user: HTTPBasicCredentials = Depends(HTTPBasic()), 
-        conn=Depends(conn_to_db)
-        ) -> User:
-    
-    return check_valid_user_from_db_and_get_user(user=user, conn=conn)
-
-
-def check_valid_session_token_and_get_user(req:Request) -> User:
-    jwt_token = req.cookies.get('jwt_personal_session_token')
-    if not jwt_token:
-        raise HTTPException(status_code=401, detail='token invalid')
-    try:
-        payload = verify_jwt(token=jwt_token)
-        return User(**payload)
-    except:
-        raise HTTPException(status_code=401, detail='token invalid')    
-    
 def require_roles(need_roles: list[str]):
-    def dependency(user: User = Depends(check_valid_session_token_and_get_user)) -> User:
+    def dependency(user: User = Depends(check_valid_session_token_db_and_get_user)) -> User:
         fact_roles = set(user.roles or [])
         if not fact_roles.intersection(need_roles):
             raise HTTPException(status_code=403, detail='has not access')

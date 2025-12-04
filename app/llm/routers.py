@@ -1,20 +1,22 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Header
 from models.model import TextIn
 from db.utils import conn_to_db
 from llm.deps import chunk_and_embed_to_db, llm, get_top_k_chunks, chunk_and_embed_file
-from auth.deps import require_roles
+import os
 
+
+ADMIN_TG_ID=os.getenv("ADMIN_TG_ID")
 router_llm = APIRouter(prefix='/llm')
 
-@router_llm.post("/embed", dependencies=[Depends(require_roles(["admin"]))])
-def create_embeddings(payload: TextIn, conn = Depends(conn_to_db)):
+@router_llm.post("/embed")#, dependencies=[Depends(require_roles(["admin"]))]) if id == id_admin
+def create_embeddings(payload: TextIn, conn = Depends(conn_to_db), tg_id: str = Header(None)):
+    if tg_id != ADMIN_TG_ID:
+        raise HTTPException(403, "Нет доступа")
     inserted = chunk_and_embed_to_db(payload.text, conn)
     return {"status": "ok", "chunks_added_counts": inserted}
 
 @router_llm.post(
-    "/embed_file",
-    dependencies=[Depends(require_roles(["admin"]))],
-)
+    "/embed_file")#, dependencies=[Depends(require_roles(["admin"]))],) сделать кредитс
 async def create_embeddings_from_file(
     file: UploadFile = File(...),
     conn = Depends(conn_to_db),
@@ -36,7 +38,7 @@ async def create_embeddings_from_file(
 
 
 
-@router_llm.post("/ask", dependencies=[Depends(require_roles(["user"]))])
+@router_llm.post("/ask")#, dependencies=[Depends(require_roles(["user"]))]) сделать кредитс
 def ask_llm(payload: TextIn, conn = Depends(conn_to_db)):
     question = payload.text
 

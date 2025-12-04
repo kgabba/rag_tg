@@ -37,5 +37,13 @@ services:
     depends_on:
       - postgres
 
+  bot:
+    build: .
+    container_name: tg_bot
+    restart: always
+    env_file: .env        # тут лежит BOT_TOKEN и BASE_API_URL
+    depends_on:
+      - api               # ждём, пока поднимется backend
+    command: ["python", "tg_bot/bot_main.py"]
 volumes:
   pgdata:
