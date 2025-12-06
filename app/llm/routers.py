@@ -4,28 +4,36 @@ from db.utils import conn_to_db
 from llm.deps import chunk_and_embed_to_db, llm, get_top_k_chunks, chunk_and_embed_file
 import os
 
-
-ADMIN_TG_ID=os.getenv("ADMIN_TG_ID")
+ADMIN_TG_ID = os.getenv("ADMIN_TG_ID")
 router_llm = APIRouter(prefix='/llm')
 
-@router_llm.post("/embed")#, dependencies=[Depends(require_roles(["admin"]))]) if id == id_admin
+MAX_FILE_SIZE = 4 * 1024 * 1024  # 4 МБ
+
+
+@router_llm.post("/embed")
 def create_embeddings(payload: TextIn, conn = Depends(conn_to_db), tg_id: str = Header(None)):
     if tg_id != ADMIN_TG_ID:
         raise HTTPException(403, "Нет доступа")
     inserted = chunk_and_embed_to_db(payload.text, conn)
     return {"status": "ok", "chunks_added_counts": inserted}
 
-@router_llm.post(
-    "/embed_file")#, dependencies=[Depends(require_roles(["admin"]))],) сделать кредитс
+
+@router_llm.post("/embed_file")
 async def create_embeddings_from_file(
     file: UploadFile = File(...),
     conn = Depends(conn_to_db),
 ):
     try:
         content = await file.read()
+
+        # лимит 4 МБ
+        if len(content) > MAX_FILE_SIZE:
+            raise HTTPException(status_code=400, detail="Файл больше 4 МБ")
+
         inserted = chunk_and_embed_file(content, file.filename, conn)
+    except HTTPException:
+        raise
     except ValueError as e:
-        # например, неподдерживаемый формат
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка обработки файла: {e}")
@@ -37,13 +45,11 @@ async def create_embeddings_from_file(
     }
 
 
-
-@router_llm.post("/ask")#, dependencies=[Depends(require_roles(["user"]))]) сделать кредитс
+@router_llm.post("/ask")
 def ask_llm(payload: TextIn, conn = Depends(conn_to_db)):
     question = payload.text
 
-    # 1. достаём top-2 чанка из БД
-    chunks = get_top_k_chunks(question, conn, k=2)
+    chunks = get_top_k_chunks(question, conn, k=5)
 
     if not chunks:
         return {
@@ -53,7 +59,6 @@ def ask_llm(payload: TextIn, conn = Depends(conn_to_db)):
 
     context = "\n\n---\n\n".join(chunks)
 
-    # 2. собираем промпт с жёстким правилом "не придумывай"
     prompt = f"""
 Ты — помощник, который отвечает ТОЛЬКО на основе приведённого контекста.
 
@@ -69,7 +74,6 @@ def ask_llm(payload: TextIn, conn = Depends(conn_to_db)):
 - Отвечай кратко, по-русски.
 """
 
-    # 3. зовём LLM
     response = llm.invoke(prompt)
     answer = response.content if hasattr(response, "content") else str(response)
 
